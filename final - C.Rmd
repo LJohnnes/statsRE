@@ -29,6 +29,8 @@ library(ggplot2)
 library(gridExtra)
 library(stringi)
 library(timeDate)
+install.packages("arules")
+library(arules)
 data <- read.csv('DataMasters-3.csv', dec=",")
 dim(data)
 summary(data)
@@ -83,6 +85,10 @@ data$Sold.Lease.Price <- gsub('[^a-zA-Z0-9.]', '', data$Sold.Lease.Price)
 data$List.Price <- gsub('[^a-zA-Z0-9.]', '', data$List.Price)
 
 data$Price.Diff <- as.numeric(data$Sold.Lease.Price) - as.numeric(data$List.Price) 
+
+#Condo size as discrete
+data$condoSize <- discretize(data$Sqft.Total, "cluster", categories = 3, 
+    labels=c("small", "medium", "large"))
 ```
 
 
