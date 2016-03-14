@@ -28,6 +28,7 @@ library(dplyr)
 library(ggplot2)
 library(gridExtra)
 library(stringi)
+library(timeDate)
 data <- read.csv('DataMasters-3.csv', dec=",")
 dim(data)
 summary(data)
@@ -65,7 +66,9 @@ data$soldMonth <- format(as.Date(soldDates), "%m")
 listDate <- soldDates-data$ADOM
 data$listMonth <- format(as.Date(listDate), "%m")
 
+## Weekdays, most frequent day of the week
 
+data$day <- weekdays(soldDates)
 
 #Floor = On what floor of the building is it?
 
