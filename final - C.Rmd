@@ -1,0 +1,102 @@
+---
+title: "Final Project - Group C"
+author: "Lionel Johnnes"
+date: "March 12, 2016"
+output: html_document
+---
+
+ASSIGNMENT GUIDELINES:
+From a dataset of your choice, build a regression, classification or clustering method that solves a challenge you must also define. The work must include a brief stat description of the dataset aligned with the goal of the analysis, and the valuation of the different alternatives and choices made during the process. 10 pages max, no code included.
+
+Datasets included in prior public work are not allowed. The work will be assessed considering:
+- how relevant and thorough is the stat description,
+- information that will help the reproducibility (markdown code, plots, links to datasets, etc.)
+- the choice of the model,
+the goal of the analysis,
+the achievements and
+the exposition of results.
+The maximum number of pages that the PDF document must have is 10. Your abilities to synthesize relevant information and communicate important results will be also considered.
+
+DATA SET:
+Austin Craft Realty
+Condo sales in Downtown Austin, Texas for the past year (03/18/2015 - 03/11/2015)
+
+
+```{r load-data, echo=FALSE}
+
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+data <- read.csv('DataMasters-3.csv')
+dim(data)
+summary(data)
+head(data)
+tail(data)
+View(data)
+
+```
+
+
+```{r pre-processing, echo=FALSE}
+
+#Get rid of useless variables
+#For every observation:
+#  Status = Sold
+#  Area = DT
+#  Street.Dir.Suffix = NULL, except for 1 observation
+
+#Create new variables
+#Age = how old is the home?
+data$age <- 2016 - data$Year.Built
+
+#Relisted = Was the home taken off market at some point?
+data$relisted <- data$CDOM - data$ADOM
+
+#Sold.Month = In what month was it sold?
+
+# having trouble.... dates are factors here
+soldDates <- as.Date(data$Sold.Lease.Date, format = "%m/%d/%Y") # returns NA values
+#format(as.Date("1979-12-20"), "%m") 
+#as.POSIXlt(as.Date("1979-12-20"))$mo + 1 
+#as.numeric(substring("1979-12-20", 6, 7)) 
+#as.numeric(factor(months(as.Date("1979-12-20"), abbrev = TRUE), levels = month.abb)) 
+#http://www.statmethods.net/input/dates.html
+
+#List.Month = In what month was it listed?
+
+#data$Sold.Lease.Date - ADOM
+# find the date listed... then find the month
+
+
+#Floor = On what floor of the building is it?
+
+#data$Unit.Number
+# units are currently factors... extract the first digit of the # 
+
+
+#Price.Diff = How did sale price differ from list price?
+
+data$Price.Diff <- as.numeric(data$Sold.Lease.Price) - as.numeric(data$List.Price) # does not work
+# Why does as.numeric("factor") return random numbers? what do they represent?
+# Use substr to remove $ and ,?
+
+
+```
+
+
+
+
+```{r exploratory-analysis, echo=FALSE}
+
+
+
+
+
+
+
+```
+
+
+
+
