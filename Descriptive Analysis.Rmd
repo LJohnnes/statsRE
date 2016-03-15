@@ -1,0 +1,80 @@
+---
+title: "Untitled"
+author: "Arlen Galicia"
+date: "March 14, 2016"
+output: html_document
+---
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(corrplot)
+data <- read.csv('DataMasters-3.csv')
+library(stringi)
+data <- read.csv('DataMasters-3.csv', dec=",")
+dim(data)
+summary(data)
+head(data)
+data$age <- 2016 - as.numeric(data$Year.Built)
+data$relisted <- data$CDOM - data$ADOM
+
+#Sold.Month = In what month was it sold?
+#It was all because of using "/" instead of "-"
+soldDates <- as.Date(data$Sold.Lease.Date, format = "%m-%d-%Y")
+data$soldMonth <- format(as.Date(soldDates), "%m") 
+
+# having trouble.... dates are factors here
+soldDates <- as.Date(data$Sold.Lease.Date, format = "%m/%d/%Y") # returns NA values
+#format(as.Date("1979-12-20"), "%m") 
+#as.POSIXlt(as.Date("1979-12-20"))$mo + 1 
+#as.numeric(substring("1979-12-20", 6, 7)) 
+#as.numeric(factor(months(as.Date("1979-12-20"), abbrev = TRUE), levels = month.abb)) 
+#http://www.statmethods.net/input/dates.html
+
+#List.Month = In what month was it listed?
+
+#data$Sold.Lease.Date - ADOM
+# find the date listed... then find the month
+listDate <- soldDates-data$ADOM
+data$listMonth <- format(as.Date(listDate), "%m")
+
+
+#Floor = On what floor of the building is it?
+
+#data$Unit.Number
+# units are currently factors... extract the first digit of the # 
+#Floor = On what floor of the building is it?
+
+data$Unit.Number <- gsub('[^a-zA-Z0-9.]', '', data$Unit.Number)
+data$floor <- stri_extract_first(data$Unit.Number, regex = "\\d")
+
+#Price.Diff = How did sale price differ from list price?
+
+data$Price.Diff <- as.numeric(data$Sold.Lease.Price) - as.numeric(data$List.Price) # does not work
+# Why does as.numeric("factor") return random numbers? what do they represent?
+# Use substr to remove $ and ,?
+
+#Price.Diff = How did sale price differ from list price?
+#removing all sorts of characters (dollar signs in this case) and then changing as numeric 
+data$Sold.Lease.Price <- gsub('[^a-zA-Z0-9.]', '', data$Sold.Lease.Price)
+data$List.Price <- gsub('[^a-zA-Z0-9.]', '', data$List.Price)
+
+data$Price.Diff <- as.numeric(data$Sold.Lease.Price) - as.numeric(data$List.Price)
+library(MASS)
+plot(data$List.Price,data$age)
+cor(as.numeric(data$fgr),data$fgr2)
+
+
+
+data$fgr<- as.data.frame(data$List.Price,data$age)
+data$fgr2<- as.numeric(data$age)
+corrplot(data[,16:18], method = "color")
+
+plot(data$List.Price,data$Year.Built)
+cor(as.numeric(data$List.Price),data$age)
+
+plot(data$List.Price,data$Year.Built)
+cor(as.numeric(data$List.Price),data$age)
+
+```
+
