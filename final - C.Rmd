@@ -29,66 +29,75 @@ library(ggplot2)
 library(gridExtra)
 library(stringi)
 library(timeDate)
-install.packages("arules")
 library(arules)
+library(data.table)
 data <- read.csv('DataMasters-3.csv', dec=",")
 dim(data)
 summary(data)
 head(data)
 tail(data)
-View(data)
+#View(data)
+
+
+cci <- read.csv('DP_LIVE_15032016091148702.csv', dec=",")
+cci <- cci[which(cci$LOCATION == 'USA'),-c(1,2,3,4,5,8)]
 
 ```
+
+Every observation has the same variables for Status (Sold), Area (DT) and Street.Dir.Suffix (except for 1). Because they contribute nothing to the model, we remove these variables from the data set.
+
+We then create several new variables that could be useful in predictions or interesting to explore:
+1. age (Numeric): How old is the home?
+2. relisted (Boolean): Was the home taken off market at some point?
+3. soldMonth (Categorical): In what month was it sold?
+4. listMonth (Categorical): In what month was it listed?
+5. soldDay (Categorical): On what day of the week was it sold?
+6. Floor (Numeric): On what floor of the building is it?
+# we need to be careful with floor, since we may be saying units on the 12th floor are actually on the 1st.
+7. Price.Diff (Numeric): How did sale price differ from list price?
+8. condoSize (Categorical): What type (size: S,M,L) condo is it?
+9. ccilisted (Numeric): What was the consumer confidence index the month the condo listing was posted?
+10. ccisold (Numeric): What was the consumer confidence index the month the condo was sold?
 
 
 ```{r pre-processing, echo=FALSE}
 
-#Get rid of useless variables
-#For every observation:
-#  Status = Sold
-#  Area = DT
-#  Street.Dir.Suffix = NULL, except for 1 observation
+data <- data[,-c(2,3,8)]
 
-#Create new variables
-#Age = how old is the home?
+# Create new variables
 data$age <- 2016 - data$Year.Built
 
-#Relisted = Was the home taken off market at some point?
 data$relisted <- data$CDOM - data$ADOM
+data$relisted[data$relisted>0] <- 1
 
-#Sold.Month = In what month was it sold?
 #It was all because of using "/" instead of "-"
 soldDates <- as.Date(data$Sold.Lease.Date, format = "%m-%d-%Y")
 data$soldMonth <- format(as.Date(soldDates), "%m") 
 
-
-#List.Month = In what month was it listed?
-#data$Sold.Lease.Date - ADOM
-# find the date listed... then find the month
 listDate <- soldDates-data$ADOM
 data$listMonth <- format(as.Date(listDate), "%m")
 
-## Weekdays, most frequent day of the week
-
-data$day <- weekdays(soldDates)
-
-#Floor = On what floor of the building is it?
+data$soldDay <- weekdays(soldDates)
 
 data$Unit.Number <- gsub('[^a-zA-Z0-9.]', '', data$Unit.Number)
 data$floor <- stri_extract_first(data$Unit.Number, regex = "\\d")
+data$floor <- as.numeric(data$floor)
 
-
-
-#Price.Diff = How did sale price differ from list price?
 #removing all sorts of characters (dollar signs in this case) and then changing as numeric 
 data$Sold.Lease.Price <- gsub('[^a-zA-Z0-9.]', '', data$Sold.Lease.Price)
 data$List.Price <- gsub('[^a-zA-Z0-9.]', '', data$List.Price)
-
 data$Price.Diff <- as.numeric(data$Sold.Lease.Price) - as.numeric(data$List.Price) 
 
 #Condo size as discrete
-data$condoSize <- discretize(data$Sqft.Total, "cluster", categories = 3, 
-    labels=c("small", "medium", "large"))
+data$condoSize <- discretize(data$Sqft.Total, "cluster", categories = 3, labels=c("small", "medium", "large"))
+
+
+
+data$ccilisted
+  
+data$ccisold
+
+
 ```
 
 
