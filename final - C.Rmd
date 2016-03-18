@@ -27,15 +27,16 @@ Condo sales in Downtown Austin, Texas for the past year (03/18/2015 - 03/11/2015
 library(dplyr)
 library(ggplot2)
 library(gridExtra)
+library(GGally)
 library(stringi)
 library(timeDate)
 library(arules)
 library(data.table)
 data <- read.csv('DataMasters-3.csv', dec=",")
 dim(data)
-summary(data)
+#summary(data)
 head(data)
-tail(data)
+#tail(data)
 #View(data)
 
 
@@ -44,7 +45,7 @@ cci <- cci[which(cci$LOCATION == 'USA'),-c(1,2,3,4,5,8)]
 
 ```
 
-Every observation has the same variables for Status (Sold), Area (DT) and Street.Dir.Suffix (except for 1). Because they contribute nothing to the model, we remove these variables from the data set.
+The first variable, MLS.Number, is a unique identifier and can be removed as it does not aid in predictions. In addition, every observation shares one value for the following variables: Status (Sold), Area (DT) and Street.Dir.Suffix (except for 1). Again, we remove these variables from the data set.
 
 We then create several new variables that could be useful in predictions or interesting to explore:
 1. age (Numeric): How old is the home?
@@ -60,9 +61,9 @@ We then create several new variables that could be useful in predictions or inte
 10. ccisold (Numeric): What was the consumer confidence index the month the condo was sold?
 
 
-```{r pre-processing, echo=FALSE}
+```{r pre-processing}
 
-data <- data[,-c(2,3,8)]
+data <- data[,-c(1,2,3,8)]
 
 # Create new variables
 data$age <- 2016 - data$Year.Built
@@ -91,11 +92,15 @@ data$Price.Diff <- as.numeric(data$Sold.Lease.Price) - as.numeric(data$List.Pric
 #Condo size as discrete
 data$condoSize <- discretize(data$Sqft.Total, "cluster", categories = 3, labels=c("small", "medium", "large"))
 
+soldDates <- as.Date(data$Sold.Lease.Date, format = "%m-%d-%Y")
+data$soldMonth <- format(as.Date(soldDates), "%m") 
 
 
-data$ccilisted
-  
-data$ccisold
+#ccidate <- as.Date(cci$TIME, format = "%Y-%m")
+
+#data$ccilisted
+
+#data$ccisold
 
 
 ```
@@ -106,7 +111,9 @@ data$ccisold
 ```{r exploratory-analysis, echo=FALSE}
 
 
+#ggpairs(data)
 
+#lm(data$Sold.Lease.Price ~ )
 
 
 
@@ -114,5 +121,17 @@ data$ccisold
 ```
 
 
+
+
+```{r regressions, echo=FALSE}
+
+## Split data into training & testing
+## 
+
+
+
+
+
+```
 
 
