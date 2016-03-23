@@ -1,6 +1,6 @@
 ---
 title: "Final Project - Group C"
-author: "Lionel Johnnes"
+author: "Group C"
 date: "March 12, 2016"
 output: html_document
 ---
@@ -37,7 +37,7 @@ dim(data)
 #summary(data)
 head(data)
 #tail(data)
-#View(data)
+View(data)
 
 
 cci <- read.csv('DP_LIVE_15032016091148702.csv', dec=",")
@@ -60,7 +60,7 @@ We then create several new variables that could be useful in predictions or inte
 9. ccilisted (Numeric): What was the consumer confidence index the month the condo listing was posted?
 10. ccisold (Numeric): What was the consumer confidence index the month the condo was sold?
 
-
+#Data Preparation and Creation of New Variables
 ```{r pre-processing}
 
 data <- data[,-c(1,2,3,8)]
@@ -88,7 +88,8 @@ data$floor <- as.numeric(data$floor)
 data$Sold.Lease.Price <- gsub('[^a-zA-Z0-9.]', '', data$Sold.Lease.Price)
 data$List.Price <- gsub('[^a-zA-Z0-9.]', '', data$List.Price)
 data$Price.Diff <- as.numeric(data$Sold.Lease.Price) - as.numeric(data$List.Price) 
-
+data$Sold.Lease.Price <- as.numeric(data$Sold.Lease.Price)
+data$List.Price <- as.numeric(data$List.Price)
 #Condo size as discrete
 data$condoSize <- discretize(data$Sqft.Total, "cluster", categories = 3, labels=c("small", "medium", "large"))
 
@@ -96,7 +97,7 @@ soldDates <- as.Date(data$Sold.Lease.Date, format = "%m-%d-%Y")
 data$soldMonth <- format(as.Date(soldDates), "%m") 
 
 
-#ccidate <- as.Date(cci$TIME, format = "%Y-%m")
+ccidate <- as.Date(cci$TIME, format = "%Y-%m")
 
 #data$ccilisted
 
@@ -106,24 +107,121 @@ data$soldMonth <- format(as.Date(soldDates), "%m")
 ```
 
 
+#EXPLORATORY ANALYSIS
 
+#Univariate 
+#Univariate Quantitative
+#Measures of Central Tendency
+```{r Measures of Central Tendency, echo=FALSE}
+summary(data)
+"""
+summary(data$Sold.Lease.Price)
+summary(data$List.Price)
+summary(data$Price.Diff)
+summary(data$age)
+summary(data$ADOM)
+summary(data$CDOM)
+"""
+```
 
-```{r exploratory-analysis, echo=FALSE}
+```{r Measures of Dispersion, echo=FALSE}
+summary.list = function(x)list(
+ N.with.NA.removed= length(x[!is.na(x)]),
+ Count.of.NA= length(x[is.na(x)]),
+ Max.Min=range(x, na.rm=TRUE),
+ Range=max(x, na.rm=TRUE) - min(x, na.rm=TRUE),
+ Variance=var(x, na.rm=TRUE),
+ Std.Dev=sd(x, na.rm=TRUE),
+ Coeff.Variation.Prcnt=sd(x, na.rm=TRUE)/mean(x, na.rm=TRUE)*100,
+ Std.Error=sd(x, na.rm=TRUE)/sqrt(length(x[!is.na(x)])),
+ Quantile=quantile(x, na.rm=TRUE)
+)
+#Sold Price
+summary.list(data$Sold.Lease.Price)
+#List Price
+summary.list(data$List.Price)
+#Price Difference
+summary.list(data$Price.Diff)
+#Age
+summary.list(data$age)
+#ADOM
+summary.list(data$ADOM)
+#CDOM
+summary.list(data$CDOM)
+```
 
+#Other measures 
+```{r Skewness, Kurtosis, echo=FALSE}
+skewness(data$Sold.Lease.Price)
+kurtosis(data$Sold.Lease.Price)
+skewness(data$List.Price)
+kurtosis(data$List.Price)
+skewness(data$Price.Diff)
+kurtosis(data$Price.Diff)
+skewness(data$age)
+kurtosis(data$age)
+skewness(data$ADOM)
+kurtosis(data$ADOM)
+skewness(data$CDOM)
+kurtosis(data$CDOM)
+```
 
-#ggpairs(data)
-
-#lm(data$Sold.Lease.Price ~ )
-
-
-
+#Univariate Graphical
+```{r Histograms}
 
 ```
 
 
+```{r Box Plots}
 
+```
+
+
+```{r Bar Charts}
+
+```
+
+
+```{r Kernel Density Plots}
+
+```
+
+
+#Bivariate
+#Bivariate Quantitative
+```{r Cross tabulation, echo=FALSE}
+
+```
+
+```{r Covariance, echo=FALSE}
+
+```
+
+```{r Correlation, echo=FALSE}
+
+```
+
+#Bivariate Graphical
+```{r Scatterplots}
+
+```
+
+
+#Advanced Bivariate Analysis
+
+```{r ANOVA}
+
+```
+
+```{r Cluster Analysis}
+
+```
+
+#I will complete the above chunks!!!--Begum
 
 ```{r regressions, echo=FALSE}
+
+lm(data$Sold.Lease.Price ~.,data=data)
 
 ## Split data into training & testing
 ## 
