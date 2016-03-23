@@ -108,8 +108,8 @@ modelData<- modelData[,10:34]
 
 names(modelData)
 
-trainModelData<-modelData[1:184,]
-testModelData<-modelData[185:230,]
+trainModelData<-modelData[1:184,]  #80% of the data
+testModelData<-modelData[185:230,]  #20% of the data
 ##### Correlation chart 
 modelDataRed<-cbind(modelData$PriceSqrt,modelData$Year.Built,modelData$X..Beds.Total,modelData$X..Living,modelData$floor,modelData$ADOM,modelData$List.Price)
 dim(modelDataRed)
