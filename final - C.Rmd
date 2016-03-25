@@ -32,6 +32,10 @@ library(stringi)
 library(timeDate)
 library(arules)
 library(data.table)
+library(lattice)
+library(Hmisc)
+library(PerformanceAnalytics)
+library(cluster) 
 data <- read.csv('DataMasters-3.csv', dec=",")
 dim(data)
 #summary(data)
@@ -41,8 +45,7 @@ View(data)
 
 
 cci <- read.csv('DP_LIVE_15032016091148702.csv', dec=",")
-cci <- cci[which(cci$LOCATION == 'USA'),-c(1,2,3,4,5,8)]
-
+cci <- subset(cci, cci$X...LOCATION == "USA")
 ```
 
 The first variable, MLS.Number, is a unique identifier and can be removed as it does not aid in predictions. In addition, every observation shares one value for the following variables: Status (Sold), Area (DT) and Street.Dir.Suffix (except for 1). Again, we remove these variables from the data set.
@@ -92,7 +95,8 @@ data$Sold.Lease.Price <- as.numeric(data$Sold.Lease.Price)
 data$List.Price <- as.numeric(data$List.Price)
 #Condo size as discrete
 data$condoSize <- discretize(data$Sqft.Total, "cluster", categories = 3, labels=c("small", "medium", "large"))
-
+#Age as categorical
+data$ageCategories <- discretize(data$age, "cluster", categories = 2, labels=c("new", "medium", "old"))
 soldDates <- as.Date(data$Sold.Lease.Date, format = "%m-%d-%Y")
 data$soldMonth <- format(as.Date(soldDates), "%m") 
 
@@ -167,57 +171,159 @@ kurtosis(data$CDOM)
 ```
 
 #Univariate Graphical
-```{r Histograms}
+```{r Histograms with Kernel Density Estimation}
+"""
+smallCondo <- subset(data$age, data$condoSize == "small")
+mediumCondo <- subset(data$age, data$condoSize == "medium")
+largeCondo <- subset(data$age, data$condoSize == "large")
+"""
+histogram(~ age,  main="Histograms of Building Age by Condo Size", data=data, type = "density", panel=function(x, ...) {
+              panel.histogram(x, ...)
+              panel.densityplot(x, darg=list(bw = 20, kernel="gaussian"),...)
+      })
+histogram(~ age | condoSize,  main="Histograms of Building Age by Condo Size",
+          index.cond=list(c(1,2,3)), data=data, type = "density",
+          panel=function(x, ...) {
+              panel.histogram(x, ...)
+              panel.densityplot(x, darg=list(bw = 10, kernel="gaussian"),...)
+      })
+histogram(~ X..Beds.Total | condoSize,  main="Frequency of Bedrooms by Condo Size",
+          index.cond=list(c(1,2,3)), data=data, type = "density",
+          panel=function(x, ...) {
+              panel.histogram(x, ...)
+              panel.densityplot(x, darg=list(bw = 0.5, kernel="gaussian"),...)
+      })
+histogram(~ X..Baths.Full | condoSize,  main="Frequency of Bathrooms by Condo Size",
+          index.cond=list(c(1,2,3)), data=data, type = "density",
+          panel=function(x, ...) {
+              panel.histogram(x, ...)
+              panel.densityplot(x, darg=list(bw = 0.5, kernel="gaussian"),...)
+      })
+histogram(~ X..Living | condoSize,  main="Frequency of Living Rooms by Condo Size", index.cond=list(c(1,2,3)), data=data, type = "density",
+          panel=function(x, ...) {
+              panel.histogram(x, ...)
+              panel.densityplot(x, darg=list(bw = 0.4, kernel="gaussian"),...)
+      })
+histogram(~ X..Garage.Spaces | condoSize,  main="Histograms of Building Age by Condo Size", index.cond=list(c(1,2,3)), data=data, type = "density",
+          panel=function(x, ...) {
+              panel.histogram(x, ...)
+              panel.densityplot(x, darg=list(bw = 0.5, kernel="gaussian"),...)
+      })
 
 ```
-
-
-```{r Box Plots}
-
-```
-
-
-```{r Bar Charts}
-
-```
-
-
-```{r Kernel Density Plots}
-
-```
-
-
 #Bivariate
 #Bivariate Quantitative
-```{r Cross tabulation, echo=FALSE}
-
-```
 
 ```{r Covariance, echo=FALSE}
-
+cov(numeric_data, y = NULL, use = "everything",
+    method = c("pearson"))
 ```
 
 ```{r Correlation, echo=FALSE}
-
+correlations <- rcorr(as.matrix(numeric_data))
+correlations
 ```
 
 #Bivariate Graphical
 ```{r Scatterplots}
+pairs(data=numeric_data,~Sqft.Total+List.Price+Sold.Lease.Price+ADOM+Price.Diff+X..Beds.Total+X..Living+X..Garage.Spaces)
 
+chart.Correlation(numeric_data, 
+                   method="pearson",
+                   histogram=TRUE,
+                   pch=16)
 ```
 
+```{r t-test}
+t.test(Price.Diff~relisted, data=data)
+t.test(ADOM~relisted, data=data)
+t.test(CDOM~relisted, data=data) #significant
+p0 <- ggplot(data, aes(factor(relisted), CDOM))
+p0 + geom_boxplot(aes(fill = factor(relisted)))+geom_jitter()
+```
 
 #Advanced Bivariate Analysis
 
 ```{r ANOVA}
-
+#List.Price across age categories and condo size
+p1 <- ggplot(data, aes(factor(condoSize), List.Price))
+p1 + geom_boxplot(aes(fill = factor(condoSize)))+geom_jitter()
+p2 <- ggplot(data, aes(factor(ageCategories), List.Price))
+p2 + geom_boxplot(aes(fill = factor(ageCategories)))+geom_jitter()
+aov_list <- aov(List.Price ~ ageCategories*condoSize, data=data)
+summary(aov_list)
+TukeyHSD(aov_list)
+#Sold Price across age categories and condo size
+p1 <- ggplot(data, aes(factor(condoSize), Sold.Lease.Price))
+p1 + geom_boxplot(aes(fill = factor(condoSize)))+geom_jitter()
+p2 <- ggplot(data, aes(factor(ageCategories), Sold.Lease.Price))
+p2 + geom_boxplot(aes(fill = factor(ageCategories)))+geom_jitter()
+aov_sold <- aov(Sold.Lease.Price ~ ageCategories*condoSize, data=data)
+summary(aov_sold)
+TukeyHSD(aov_sold)
+#Price Difference across age categories and condo size
+p1 <- ggplot(data, aes(factor(condoSize), Price.Diff))
+p1 + geom_boxplot(aes(fill = factor(condoSize)))+geom_jitter()
+p2 <- ggplot(data, aes(factor(ageCategories), Price.Diff))
+p2 + geom_boxplot(aes(fill = factor(ageCategories)))+geom_jitter()
+aov_price <- aov(Price.Diff ~ ageCategories*condoSize, data=data)
+summary(aov_price)
+TukeyHSD(aov_price)
+#ADOM across age categories and condo size
+p1 <- ggplot(data, aes(factor(condoSize), ADOM))
+p1 + geom_boxplot(aes(fill = factor(condoSize)))+geom_jitter()
+p2 <- ggplot(data, aes(factor(ageCategories), ADOM))
+p2 + geom_boxplot(aes(fill = factor(ageCategories)))+geom_jitter()
+aov_ADOM <- aov(ADOM ~ ageCategories*condoSize, data=data)
+summary(aov_ADOM)
+TukeyHSD(aov_ADOM)
 ```
 
 ```{r Cluster Analysis}
+num <- c("X..Beds.Total", "X..Baths.Full", "X..Baths.Half","X..Living","X..Garage.Spaces", "age", "List.Price", "Sqft.Total", "Sold.Lease.Price")
+clsdata <- data[num]
+clusterData <- na.omit(clsdata) # listwise deletion of missing
+clusterData <- scale(clsdata) # standardize variables
 
+# Determine number of clusters
+wss <- (nrow(clusterData)-1)*sum(apply(clusterData,2,var))
+for (i in 2:15) wss[i] <- sum(kmeans(clusterData, 
+  	centers=i)$withinss)
+plot(1:15, wss, type="b", xlab="Number of Clusters",
+  ylab="Within groups sum of squares")
+# K-Means Cluster Analysis
+cluster_fit <- kmeans(clusterData, 3) # 3 clusters
+cluster_fit
+#getting cluster means 
+aggregate(clusterData,by=list(cluster_fit$cluster),FUN=mean)
+# append cluster assignment
+clusterData <- data.frame(clusterData, cluster_fit$cluster)
+table(data$condoSize, cluster_fit$cluster)
+clusplot(clusterData, cluster_fit$cluster, color=TRUE, shade=TRUE, 
+labels=0, lines=0)
 ```
 
-#I will complete the above chunks!!!--Begum
+```{r Decision Tree}
+# Classification Tree with rpart
+library(rpart)
+
+# grow tree 
+fit <- rpart(relisted ~ age + List.Price + ADOM,
+  	method="class", data=data)
+
+printcp(fit) # display the results 
+plotcp(fit) # visualize cross-validation results 
+summary(fit) # detailed summary of splits
+
+# plot tree 
+plot(fit, uniform=TRUE, 
+  	main="Classification Tree for Kyphosis")
+text(fit, use.n=TRUE, all=TRUE, cex=.8)
+
+# create attractive postscript plot of tree 
+post(fit, file = "c:/tree.ps", 
+  	title = "Classification Tree for Kyphosis")
+```
 
 ```{r regressions, echo=FALSE}
 
