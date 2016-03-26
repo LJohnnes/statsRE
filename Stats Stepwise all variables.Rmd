@@ -1,0 +1,151 @@
+---
+title: "Choosing the right model"
+author: "Arlen Galicia"
+date: "March 14, 2016"
+output: html_document
+---
+```{r setup, include=FALSE}
+
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(corrplot)
+library(leaps)
+library(dplyr)
+library(PerformanceAnalytics)
+library(stringi)
+library(car)
+
+modelData <- read.csv('mydata.csv')
+
+dim(modelData)
+##### Considering variables from X beds Total
+modelData<- modelData[,10:34]
+
+names(modelData)
+
+
+```
+A new data set has been created without considering sold information but sold price sqrt, given that we look to project the sold price sqrt of a condo base on the available information at the moment of the projection
+
+```{r setup, include=FALSE}
+
+##### Creating a new data set without Dates
+modelDataRed<-cbind(modelData[,1:8],modelData[10],modelData[12],modelData[,14:25])
+names(modelDataRed)
+dim(modelDataRed)
+
+cor(modelDataRed$PriceSqrt,modelDataRed$Sqft.Total)
+pairs(modelDataRed$PriceSqrt~modelDataRed$Sqft.Total)
+cor(modelDataRed$PriceSqrt,modelDataRed$Sold.Lease.Price)
+pairs(modelDataRed$PriceSqrt~modelDataRed$Sold.Lease.Price)
+
+cor(modelDataRed$PriceSqrt,modelDataRed$Price.Diff)
+cor(modelDataRed$PriceSqrt,modelDataRed$List.Price)
+pairs(modelDataRed$PriceSqrt~modelDataRed$List.Price)
+
+
+```
+
+In order to choose the best variables that would predict the sold sqrt price it will be used three methodologies: Best Subset Selection, forward and backward stepwise selection.
+
+### Best Subset Selection
+
+```{r setup, include=FALSE}
+
+regfit.full=regsubsets (PriceSqrt~.,data=modelDataRed ,nvmax=19)
+reg.summary =summary (regfit.full) 
+```
+
+An asterisk indicates that a given variable is included in the corresponding model, in this case the main variables are: price.diff, LP.SqFt, Sold.Lease.Price,CDOM
+However, these variables genearte the PriceSqrt variable  
+
+The values of R^2 are higher than expected 
+```{r setup, include=FALSE}
+names(reg.summary)
+reg.summary$rsq
+
+```
+
+
+Forward and backward stepwise selection to determine which variables should be considered to project the sqrt price (SoldPrice/Sqrt total), The following variables have been connsidered since dates were analyzed day by day within this method
+
+```{r setup, include=FALSE}
+reg.fit.fwd = regsubsets(PriceSqrt~., data=modelDataRed, method="forward")
+
+
+reg.fit.bwd = regsubsets(PriceSqrt~., data=modelDataRed, method="backward")
+```
+
+An asterisk indicates that a given variable is included in the corresponding model
+```{r setup, include=FALSE}
+
+reg.fit.fwd.summary=summary(reg.fit.fwd)
+reg.fit.bwd.summary=summary(reg.fit.bwd)
+## R2 for forward stepwise selection 
+names(reg.fit.fwd.summary)
+reg.fit.fwd.summary$rsq
+## R2 for backward stepwise selection
+names(reg.fit.bwd.summary)
+reg.fit.bwd.summary$rsq
+
+```
+
+
+Comparing the coefficients of both methods important to note that  the values and variables selected are different dependinf on the method
+```{r setup, include=FALSE}
+coef(reg.fit.fwd,9)
+coef(reg.fit.bwd,8)
+
+```
+
+#Choosing the best model
+
+In order for these approaches to yield accurate estimates of the test error, we must use only the training observations to perform all aspects of model-fitting-including variable selection. Therefore, the determination of which model of a given size is best must be made using only the training observations. This point is subtle but important. If the full data set is used to perform the best subset selection step, the validation set errors and cross-validation errors that we obtain will not be accurate estimates of the test error. 
+
+the first step is to create train and test data sets
+```{r setup, include=FALSE}
+
+set.seed(1)
+train=sample(c(TRUE ,FALSE), nrow(modelDataRed ),rep=TRUE)
+test=(!train)
+
+```
+Now, we apply regsubsets() to the training set in order to perform best subset selection.
+
+```{r setup, include=FALSE}
+regfit.best=regsubsets (PriceSqrt~.,data=modelDataRed[train,], nvmax=15)
+
+```
+
+ We now compute the validation set error for the best model of each model size. We first make a model matrix from the test data.
+
+```{r setup, include=FALSE}
+test.mat=model.matrix(PriceSqrt~.,data=modelDataRed[test,]) 
+```
+
+Now we run a loop, and for each size i, we extract the coeffcients from regfit.best for the best model of that size, multiply them into the appropriate columns of the test model matrix to form the predictions, and compute the test MSE.
+
+```{r setup, include=FALSE}
+val.errors=rep(NA,15)
+
+for(i in 1:15){
+  coefi=coef(regfit.best ,id=i)
+  pred=test.mat[,names(coefi)]%*%coefi
+  val.errors[i]=mean((modelDataRed$PriceSqrt[test]-pred)^2) 
+}
+val.errors
+which.min(val.errors)
+coef(regfit.best ,12)
+          
+```
+We find that the best model is the one that contains 12 variables.
+
+Finally, we perform best subset selection on the full data set, and select the best twelve-variable model. It is important that we make use of the full data set in order to obtain more accurate coeffcient estimates. 
+
+```{r setup, include=FALSE}
+regfit.best=regsubsets (PriceSqrt~.,data=modelDataRed ,nvmax=15)
+coef(regfit.best ,12) 
+```
+
+```
