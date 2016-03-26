@@ -126,7 +126,8 @@ reg.fit.fwd = regsubsets(PriceSqrt~Year.Built+X..Beds.Total+X..Baths.Full+X..Bat
 reg.fit.bwd = regsubsets(PriceSqrt~Year.Built+X..Beds.Total+X..Baths.Full+X..Baths.Half+X..Living+X..Garage.Spaces+X..Living+listMonth+soldMonth+floor+ADOM+CDOM+List.Price+Price.Diff+dayssale, data=trainModelData, method="backward")
 
 #####An asterisk indicates that a given variable is included in the corresponding model
-summary(reg.fit.fwd)
+
+anova(reg.fit.fwd)
 summary(reg.fit.bwd)
 
 #### Comparing the coefficients of both methods important to note that  the values and variables selected are the same whether use fwd or bwd??? Is that ok???
