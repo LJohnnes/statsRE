@@ -37,6 +37,12 @@ library(Hmisc)
 library(PerformanceAnalytics) 
 library(cluster) #clustering
 library(rpart)#decision trees
+library(boot)#bootstrapping
+library(MASS)
+library(car)
+library(relaimpo)
+library(foreach)
+
 data <- read.csv('DataMasters-3.csv', dec=",")
 dim(data)
 #summary(data)
@@ -103,9 +109,14 @@ data$soldMonth <- format(as.Date(soldDates), "%m")
 
 
 ccidate <- as.Date(cci$TIME, format = "%Y-%m")
-
+data$dayssale<-soldDates-listDate
+data$salesDuration <- discretize(data$age, "cluster", categories = 2, labels=c("short", "long"))
+#sqft price
+data$S...SF <- gsub('[^a-zA-Z0-9.]', '', data$S...SF)
+data$sqftPrice <- as.numeric(data$S...SF)
 #data$ccilisted
-
+#sqft list price
+data$sqftList <- as.numeric(data$LP.SqFt)
 #data$ccisold
 
 
@@ -305,38 +316,105 @@ clusplot(clusterData, cluster_fit$cluster, color=TRUE, shade=TRUE,
 labels=0, lines=0)
 ```
 
-```{r Decision Tree}
+```{r Trees}
 # Classification Tree with rpart
-data$daysonmarket <- discretize(data$ADOM, "cluster", categories = 2, labels=c("sold early","sold late"))
+data$daysonmarket <- discretize(data$ADOM, "cluster", categories = 2, labels=c("short","long"))
 # grow tree 
-fit <- rpart(daysonmarket ~ age + List.Price + X..Beds.Total + X..Baths.Full + X..Baths.Half + X..Living + X..Garage.Spaces + Sqft.Total + listMonth,
+fit0 <- rpart(daysonmarket ~ age + List.Price + X..Beds.Total + X..Baths.Full + X..Baths.Half + X..Living + X..Garage.Spaces + Sqft.Total + listMonth,
   	method="class", data=data)
 
-printcp(fit) # display the results 
-plotcp(fit) # visualize cross-validation results 
-summary(fit) # detailed summary of splits
+printcp(fit0) # display the results 
+plotcp(fit0) # visualize cross-validation results 
+summary(fit0) # detailed summary of splits
 
 # plot tree 
-plot(fit, uniform=TRUE, 
-  	main="Classification Tree for the Sales Duration")
-text(fit, use.n=TRUE, all=TRUE, cex=.8)
+plot(fit0, uniform=TRUE, 
+  	main="Classification Tree for the Days on Market")
+text(fit0, use.n=TRUE, all=TRUE, cex=.8)
+"""
+# Classification Tree for Sales Duration (doesn't make sense)
+# grow tree 
+fit1 <- rpart(salesDuration ~ age + List.Price + X..Beds.Total + X..Baths.Full + X..Baths.Half + X..Living + X..Garage.Spaces + Sqft.Total + listMonth + ADOM,
+  	method="class", data=data)
+
+printcp(fit1) # display the results 
+plotcp(fit1) # visualize cross-validation results 
+summary(fit1) # detailed summary of splits
+
+# plot tree 
+plot(fit1, uniform=TRUE, 
+  	main="Classification Tree for Sales Duration")
+text(fit1, use.n=TRUE, all=TRUE, cex=.8)
+"""
 ```
 
 ```{r regressions, echo=FALSE}
 
 lm(data$Sold.Lease.Price ~.,data=data)
 
-
 ## Split data into training & testing
-## library(MASS)
-fit <- lm(Price.Diff~Year.Built+X..Beds.Total+X..Baths.Full+X..Baths.Half+X..Living+X..Garage.Spaces+X..Living+listMonth+soldMonth+floor+ADOM+CDOM+List.Price+Price.Diff+dayssale,data=data)
+fit <- lm(sqftPrice~age+X..Beds.Total+X..Baths.Full+X..Baths.Half+X..Living+X..Garage.Spaces+X..Living+listMonth+soldMonth+ADOM+CDOM+List.Price+Price.Diff+dayssale+sqftList+relisted,data=data)
 step <- stepAIC(fit, direction="both")
 step$anova # display results
+train<-data[1:184,]  #80% of the data
+test<-data[185:230,]  #20% of the data
+train_fit <- lm(sqftPrice~age + X..Beds.Total + X..Baths.Half + X..Living + ADOM + List.Price + Price.Diff + sqftList,data=train)
+summary(train_fit)
+anova(train_fit) # anova table 
+#Fitting the test
+predict <- predict(train_fit, test)
+#predict_test <- data.frame(predict(train_fit, test))
+#Root MS Error
+sqrt((sum((test$sqftPrice-predict)^2))/nrow(test))
+#Diagnostics
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(train_fit)
+outlierTest(train_fit) 
+qqPlot(train_fit, main="QQ Plot") 
+leveragePlots(train_fit) 
 
+# function to obtain regression weights 
+bs <- function(formula, data, indices) {
+  d <- data[indices,] # allows boot to select sample 
+  fit <- lm(formula, data=d)
+  return(coef(fit)) 
+} 
+results <- boot(data=train, statistic=bs, 
+  	R=1000, formula=sqftPrice~age + X..Beds.Total + X..Baths.Half + X..Living + ADOM + List.Price + Price.Diff)
+results
+plot(results, index=1) #intercept
+boot.ci(results, type='bca', index=1) # intercept 
+boot.ci(results, type='bca', index=2) # age 
+boot.ci(results, type='bca', index=3) # X..Beds.Total
+boot.ci(results, type='bca', index=4) # X..Baths.Half
+boot.ci(results, type='bca', index=5) # X..Living
+boot.ci(results, type='bca', index=6) # ADOM
+boot.ci(results, type='bca', index=7) # List.Price
+boot.ci(results, type='bca', index=8) # Price.Diff
 
+# Calculate Relative Importance for Each Predictor
+calc.relimp(train_fit,type=c("lmg","last","first","pratt"),
+   rela=TRUE)
 
+# Bootstrap Measures of Relative Importance (1000 samples) 
+boot <- boot.relimp(train_fit, b = 1000, type = c("lmg", 
+  "last", "first", "pratt"), rank = TRUE, 
+  diff = TRUE, rela = TRUE)
+booteval.relimp(boot) 
+plot(booteval.relimp(boot,sort=TRUE)) 
+# My attempt! to calculate MSE of the model for 1000 iterations, please ignore if unnecessary. 
+length_divisor<-10 #Sampling 1/length_divisor of the data. Tried 5, 10, 20, and 50. 
+iterations<-1000
+predictions<-foreach(m=1:iterations,.combine=cbind) %do% {
+training_positions <- sample(nrow(train), size=floor((nrow(train)/length_divisor)))
+train_pos<-1:nrow(train) %in% training_positions
+training_fit<-lm(sqftPrice~age + X..Beds.Total + X..Baths.Half + X..Living + ADOM + List.Price + Price.Diff + sqftList,data=train[train_pos,])
+predict(training_fit,test)
+}
+predictions<-rowMeans(predictions)
+error<-sqrt((sum((test$sqftPrice-predictions)^2))/nrow(test))
 
-
+error
 ```
 
 
