@@ -34,8 +34,9 @@ library(arules)
 library(data.table)
 library(lattice)
 library(Hmisc)
-library(PerformanceAnalytics)
-library(cluster) 
+library(PerformanceAnalytics) 
+library(cluster) #clustering
+library(rpart)#decision trees
 data <- read.csv('DataMasters-3.csv', dec=",")
 dim(data)
 #summary(data)
@@ -181,6 +182,7 @@ histogram(~ age,  main="Histograms of Building Age by Condo Size", data=data, ty
               panel.histogram(x, ...)
               panel.densityplot(x, darg=list(bw = 20, kernel="gaussian"),...)
       })
+
 histogram(~ age | condoSize,  main="Histograms of Building Age by Condo Size",
           index.cond=list(c(1,2,3)), data=data, type = "density",
           panel=function(x, ...) {
@@ -305,10 +307,9 @@ labels=0, lines=0)
 
 ```{r Decision Tree}
 # Classification Tree with rpart
-library(rpart)
-
+data$daysonmarket <- discretize(data$ADOM, "cluster", categories = 2, labels=c("sold early","sold late"))
 # grow tree 
-fit <- rpart(relisted ~ age + List.Price + ADOM,
+fit <- rpart(daysonmarket ~ age + List.Price + X..Beds.Total + X..Baths.Full + X..Baths.Half + X..Living + X..Garage.Spaces + Sqft.Total + listMonth,
   	method="class", data=data)
 
 printcp(fit) # display the results 
@@ -317,20 +318,20 @@ summary(fit) # detailed summary of splits
 
 # plot tree 
 plot(fit, uniform=TRUE, 
-  	main="Classification Tree for Kyphosis")
+  	main="Classification Tree for the Sales Duration")
 text(fit, use.n=TRUE, all=TRUE, cex=.8)
-
-# create attractive postscript plot of tree 
-post(fit, file = "c:/tree.ps", 
-  	title = "Classification Tree for Kyphosis")
 ```
 
 ```{r regressions, echo=FALSE}
 
 lm(data$Sold.Lease.Price ~.,data=data)
 
+
 ## Split data into training & testing
-## 
+## library(MASS)
+fit <- lm(Price.Diff~Year.Built+X..Beds.Total+X..Baths.Full+X..Baths.Half+X..Living+X..Garage.Spaces+X..Living+listMonth+soldMonth+floor+ADOM+CDOM+List.Price+Price.Diff+dayssale,data=data)
+step <- stepAIC(fit, direction="both")
+step$anova # display results
 
 
 
