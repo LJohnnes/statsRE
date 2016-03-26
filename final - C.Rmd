@@ -354,6 +354,9 @@ lm(data$Sold.Lease.Price ~.,data=data)
 
 ## Split data into training & testing
 fit <- lm(sqftPrice~age+X..Beds.Total+X..Baths.Full+X..Baths.Half+X..Living+X..Garage.Spaces+X..Living+listMonth+soldMonth+ADOM+CDOM+List.Price+Price.Diff+dayssale+sqftList+relisted,data=data)
+#Multicollinearity
+vif(train_fit) # variance inflation factors 
+sqrt(vif(train_fit)) > 2
 step <- stepAIC(fit, direction="both")
 step$anova # display results
 train<-data[1:184,]  #80% of the data
@@ -397,11 +400,12 @@ calc.relimp(train_fit,type=c("lmg","last","first","pratt"),
    rela=TRUE)
 
 # Bootstrap Measures of Relative Importance (1000 samples) 
+# Bootstrap Measures of Relative Importance (1000 samples) 
 boot <- boot.relimp(train_fit, b = 1000, type = c("lmg", 
   "last", "first", "pratt"), rank = TRUE, 
   diff = TRUE, rela = TRUE)
-booteval.relimp(boot) 
-plot(booteval.relimp(boot,sort=TRUE)) 
+booteval.relimp(boot) # print result
+plot(booteval.relimp(boot,sort=TRUE)) # plot result
 # My attempt! to calculate MSE of the model for 1000 iterations, please ignore if unnecessary. 
 length_divisor<-10 #Sampling 1/length_divisor of the data. Tried 5, 10, 20, and 50. 
 iterations<-1000
