@@ -354,9 +354,6 @@ lm(data$Sold.Lease.Price ~.,data=data)
 
 ## Split data into training & testing
 fit <- lm(sqftPrice~age+X..Beds.Total+X..Baths.Full+X..Baths.Half+X..Living+X..Garage.Spaces+X..Living+listMonth+soldMonth+ADOM+CDOM+List.Price+Price.Diff+dayssale+sqftList+relisted,data=data)
-#Multicollinearity
-vif(train_fit) # variance inflation factors 
-sqrt(vif(train_fit)) > 2
 step <- stepAIC(fit, direction="both")
 step$anova # display results
 train<-data[1:184,]  #80% of the data
@@ -364,6 +361,9 @@ test<-data[185:230,]  #20% of the data
 train_fit <- lm(sqftPrice~age + X..Beds.Total + X..Baths.Half + X..Living + ADOM + List.Price + Price.Diff + sqftList,data=train)
 summary(train_fit)
 anova(train_fit) # anova table 
+#Multicollinearity
+vif(train_fit) # variance inflation factors 
+sqrt(vif(train_fit)) > 2
 #Fitting the test
 predict <- predict(train_fit, test)
 #predict_test <- data.frame(predict(train_fit, test))
